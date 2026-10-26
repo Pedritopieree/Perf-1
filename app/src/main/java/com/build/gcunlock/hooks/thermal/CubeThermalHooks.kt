@@ -2,14 +2,11 @@ package com.build.gcunlock.hooks.thermal
 
 import android.util.Log
 import io.github.libxposed.api.XposedInterface
-import io.github.libxposed.api.XposedInterface.BeforeHookCallback
-import io.github.libxposed.api.XposedInterface.AfterHookCallback
 import com.build.gcunlock.core.ConfigSnapshot
 
 private const val TAG = "GCUnlock.CubeThermal"
 
 object CubeThermalHooks {
-
     fun bind(xposed: XposedInterface, cl: ClassLoader, config: ConfigSnapshot) {
         if (!config.thermalBypass) return
         listOf(
@@ -20,15 +17,15 @@ object CubeThermalHooks {
                 cl.loadClass(cls).declaredMethods
                     .filter { m -> m.name.lowercase().let { n -> n.contains("thermal") || n.contains("boost") || n.contains("perf") } }
                     .forEach { m ->
-                        xposed.hook(m, object : XposedInterface.Hooker {
-                            override fun beforeHookedMethod(callback: BeforeHookCallback) {
-                                Log.d(TAG, "$cls.${m.name} blocked")
-                                if (m.name.lowercase().contains("thermal")) callback.returnAndSkip(Unit)
+                        xposed.hook(m).intercept { chain ->
+                            Log.d(TAG, "$cls.${m.name} blocked")
+                            if (m.name.lowercase().contains("thermal")) {
+                                return@intercept Unit
                             }
-                        })
+                            return@intercept chain.proceed()
+                        }
                     }
             } catch (e: Exception) { Log.w(TAG, "CubeThermal $cls: $e") }
         }
-        Log.d(TAG, "bound")
     }
 }
