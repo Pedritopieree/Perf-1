@@ -17,11 +17,12 @@ import com.build.gcunlock.hooks.general.*
 
 private const val TAG = "GCUnlock"
 
-class ModuleEntry : XposedModule() { // <-- SEM ARGUMENTOS NO CONSTRUTOR
+// O CONSTRUTOR PRECISA DO HOST E PARAM
+class ModuleEntry(host: XposedInterface, param: ModuleLoadedParam) : XposedModule(host, param) {
 
     private lateinit var runtime: HookRuntime
 
-    override fun onPackageReady(param: PackageReadyParam) { // <-- NOME CORRETO DO MÉTODO
+    override fun onPackageReady(param: PackageReadyParam) {
         val pkg = param.packageName
         val cl  = param.classLoader
         Log.d(TAG, "onPackageReady pkg=$pkg")
