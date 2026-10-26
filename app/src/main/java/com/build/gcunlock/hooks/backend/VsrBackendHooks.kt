@@ -2,14 +2,11 @@ package com.build.gcunlock.hooks.backend
 
 import android.util.Log
 import io.github.libxposed.api.XposedInterface
-import io.github.libxposed.api.XposedInterface.BeforeHookCallback
-import io.github.libxposed.api.XposedInterface.AfterHookCallback
 import com.build.gcunlock.core.ConfigSnapshot
 
 private const val TAG = "GCUnlock.VsrBackend"
 
 object VsrBackendHooks {
-
     fun bind(xposed: XposedInterface, cl: ClassLoader, config: ConfigSnapshot) {
         if (!config.srEnabled && !config.thermalBypass) return
         listOf(
@@ -17,34 +14,33 @@ object VsrBackendHooks {
             "com.vivo.services.game.sr.VSRController" to "requestVSR",
             "vivo.common.AbsVivoDisplayEnhanceManager" to "setVSR",
         ).forEach { (cls, mtd) ->
-            tryHookAll(xposed, cl, cls, mtd) { callback ->
+            tryHookAll(xposed, cl, cls, mtd) { chain ->
                 if (config.srEnabled && config.srAlgorithm > 0) {
-                    callback.args?.let { args ->
-                        if (args.size >= 3) {
-                            args[0] = config.srAlgorithm
-                            if (config.srTargetShortSide > 0) args[1] = config.srTargetShortSide
-                            if (config.srSourceSize > 0)      args[2] = config.srSourceSize
-                            Log.d(TAG, "$mtd overridden alg=${config.srAlgorithm}")
-                        }
+                    val args = chain.args
+                    if (args != null && args.size >= 3) {
+                        args[0] = config.srAlgorithm
+                        if (config.srTargetShortSide > 0) args[1] = config.srTargetShortSide
+                        if (config.srSourceSize > 0)      args[2] = config.srSourceSize
+                        Log.d(TAG, "$mtd overridden alg=${config.srAlgorithm}")
+                        return@tryHookAll chain.proceed(args)
                     }
                 }
+                chain.proceed()
             }
         }
-        Log.d(TAG, "bound sr=${config.srEnabled}")
     }
 
     fun hookSystemServer(xposed: XposedInterface, cl: ClassLoader) {
-        tryHookAll(xposed, cl, "com.vivo.services.game.sr.VSRController\$H", "handleMessage") {
+        tryHookAll(xposed, cl, "com.vivo.services.game.sr.VSRController\$H", "handleMessage") { chain ->
             Log.d(TAG, "VSRController\$H.handleMessage intercepted")
+            chain.proceed()
         }
     }
 
-    private fun tryHookAll(xposed: XposedInterface, cl: ClassLoader, cls: String, mtd: String, before: (BeforeHookCallback) -> Unit) {
+    private fun tryHookAll(xposed: XposedInterface, cl: ClassLoader, cls: String, mtd: String, intercept: (XposedInterface.Chain) -> Any?) {
         try {
             cl.loadClass(cls).declaredMethods.filter { it.name == mtd }.forEach { m ->
-                xposed.hook(m, object : XposedInterface.Hooker {
-                    override fun beforeHookedMethod(callback: BeforeHookCallback) = before(callback)
-                })
+                xposed.hook(m).intercept(intercept)
             }
         } catch (e: Exception) { Log.w(TAG, "hook $cls.$mtd: $e") }
     }
