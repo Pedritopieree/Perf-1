@@ -2,13 +2,11 @@ package com.build.gcunlock.hooks.overlay
 
 import android.util.Log
 import io.github.libxposed.api.XposedInterface
-import io.github.libxposed.api.XposedInterface.AfterHookCallback
 import com.build.gcunlock.core.ConfigSnapshot
 
 private const val TAG = "GCUnlock.Monster"
 
 object MonsterHooks {
-
     fun bind(xposed: XposedInterface, cl: ClassLoader, config: ConfigSnapshot) {
         if (!config.monsterPlusEnabled) return
         listOf(
@@ -20,12 +18,10 @@ object MonsterHooks {
                 cl.loadClass(cls).declaredMethods
                     .filter { m -> m.returnType == Boolean::class.java }
                     .forEach { m ->
-                        xposed.hook(m, object : XposedInterface.Hooker {
-                            override fun afterHookedMethod(callback: AfterHookCallback) {
-                                callback.result = true
-                                Log.d(TAG, "MonsterAccess $cls.${m.name} -> true")
-                            }
-                        })
+                        xposed.hook(m).intercept { 
+                            Log.d(TAG, "MonsterAccess $cls.${m.name} -> true")
+                            true 
+                        }
                     }
             } catch (e: Exception) { Log.w(TAG, "MonsterAccess $cls: $e") }
         }
@@ -34,13 +30,11 @@ object MonsterHooks {
                 .declaredMethods
                 .filter { m -> m.name.lowercase().let { n -> n.contains("mode") || n.contains("monster") } }
                 .forEach { m ->
-                    xposed.hook(m, object : XposedInterface.Hooker {
-                        override fun afterHookedMethod(callback: AfterHookCallback) {
-                            Log.d(TAG, "ModeShiftBar.${m.name} intercepted")
-                        }
-                    })
+                    xposed.hook(m).intercept { chain ->
+                        Log.d(TAG, "ModeShiftBar.${m.name} intercepted")
+                        chain.proceed()
+                    }
                 }
         } catch (e: Exception) { Log.w(TAG, "ModeShiftBar: $e") }
-        Log.d(TAG, "bound")
     }
 }
