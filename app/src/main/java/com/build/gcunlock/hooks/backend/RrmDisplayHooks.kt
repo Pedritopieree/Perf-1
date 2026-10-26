@@ -17,11 +17,14 @@ object RrmDisplayHooks {
                         m.name.lowercase().let { n -> n.contains("fps") || n.contains("rate") || n.contains("refresh") } }
                     .forEach { m ->
                         xposed.hook(m).intercept { chain ->
-                            val v = chain.proceed() as? Int ?: return@intercept chain.proceed()
+                            val result = chain.proceed() // Chama só UMA vez
+                            val v = result as? Int ?: return@intercept result
                             if (v < 144) { 
                                 Log.d(TAG, "${m.name} $v->144")
                                 144 
-                            } else v
+                            } else {
+                                v
+                            }
                         }
                     }
             } catch (e: Exception) { Log.w(TAG, "RrmDisplay $cls: $e") }
