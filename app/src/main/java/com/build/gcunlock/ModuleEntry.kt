@@ -1,4 +1,3 @@
-// file: ModuleEntry.kt
 package com.build.gcunlock
 
 import android.util.Log
@@ -18,24 +17,21 @@ import com.build.gcunlock.hooks.general.*
 
 private const val TAG = "GCUnlock"
 
-class ModuleEntry(host: XposedInterface, param: ModuleLoadedParam) : XposedModule(host, param) {
+class ModuleEntry : XposedModule() { // <-- SEM ARGUMENTOS NO CONSTRUTOR
 
     private lateinit var runtime: HookRuntime
 
-    override fun onPackageLoaded(param: PackageReadyParam) {
+    override fun onPackageReady(param: PackageReadyParam) { // <-- NOME CORRETO DO MÉTODO
         val pkg = param.packageName
         val cl  = param.classLoader
-        Log.d(TAG, "onPackageLoaded pkg=$pkg")
+        Log.d(TAG, "onPackageReady pkg=$pkg")
 
         runtime = HookRuntime(this, cl)
         val config = ConfigBridge.snapshot()
 
         when (pkg) {
             "com.vivo.gamecube" -> {
-                if (!DevicePolicy.isSupported()) {
-                    Log.w(TAG, "Device not supported, skipping hooks")
-                    return
-                }
+                if (!DevicePolicy.isSupported()) return
                 bindHooks(cl, config, isOs5 = DevicePolicy.isOs5())
             }
             "com.vivo.gamewatch" -> {
@@ -45,12 +41,10 @@ class ModuleEntry(host: XposedInterface, param: ModuleLoadedParam) : XposedModul
     }
 
     override fun onSystemServerStarting(param: SystemServerStartingParam) {
-        Log.d(TAG, "onSystemServerStarting")
         VsrBackendHooks.hookSystemServer(this, param.classLoader)
     }
 
     private fun bindHooks(cl: ClassLoader, config: com.build.gcunlock.core.ConfigSnapshot, isOs5: Boolean) {
-        Log.d(TAG, "bindHooks isOs5=$isOs5")
         BackendConfig.init(config)
         VsrBackendHooks.bind(this, cl, config)
         RrmDisplayHooks.bind(this, cl, config)
@@ -69,7 +63,6 @@ class ModuleEntry(host: XposedInterface, param: ModuleLoadedParam) : XposedModul
     }
 
     private fun bindGameWatchHooks(cl: ClassLoader, config: com.build.gcunlock.core.ConfigSnapshot) {
-        Log.d(TAG, "bindGameWatchHooks")
         ThermalFpsHooks.bind(this, cl, config)
         FpsHooks.bind(this, cl, config)
     }
