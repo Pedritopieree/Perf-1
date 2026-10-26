@@ -17,7 +17,8 @@ object FrameHooks {
                         m.name.lowercase().let { n -> n.contains("fps") || n.contains("frame") } }
                     .forEach { m ->
                         xposed.hook(m).intercept { chain ->
-                            val orig = chain.proceed() as? Int ?: return@intercept chain.proceed()
+                            val result = chain.proceed() // Chama só UMA vez
+                            val orig = result as? Int ?: return@intercept result
                             val name = m.name.lowercase()
                             val override = when {
                                 name.contains("depress") && config.depressFps > 0 -> config.depressFps
