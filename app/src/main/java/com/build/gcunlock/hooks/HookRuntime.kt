@@ -9,21 +9,21 @@ class HookRuntime(private val xposed: XposedInterface, val classLoader: ClassLoa
 
     fun findClass(name: String): Class<*>? = try {
         classLoader.loadClass(name)
-    } catch (e: ClassNotFoundException) { Log.w(TAG, "not found: $name"); null }
-
-    fun hookMethod(className: String, methodName: String, vararg paramTypes: Class<*>, hooker: XposedInterface.Hooker) {
-        val clazz = findClass(className) ?: return
-        try {
-            xposed.hook(clazz.getDeclaredMethod(methodName, *paramTypes), hooker)
-            Log.d(TAG, "hooked $className.$methodName")
-        } catch (e: Exception) { Log.w(TAG, "hook failed $className.$methodName: $e") }
+    } catch (e: ClassNotFoundException) { 
+        Log.w(TAG, "not found: $name")
+        null 
     }
 
-    fun hookAllMethods(className: String, methodName: String, hooker: XposedInterface.Hooker) {
+    // O LSPosed 102 usa o padrao chain.intercept
+    fun hookAllMethods(className: String, methodName: String, hooker: (XposedInterface.Chain) -> Any?) {
         val clazz = findClass(className) ?: return
         clazz.declaredMethods.filter { it.name == methodName }.forEach { m ->
-            try { xposed.hook(m, hooker); Log.d(TAG, "hooked $className.$methodName") }
-            catch (e: Exception) { Log.w(TAG, "hookAll failed: $e") }
+            try { 
+                xposed.hook(m).intercept { chain -> hooker(chain) }
+                Log.d(TAG, "hooked $className.$methodName") 
+            } catch (e: Exception) { 
+                Log.w(TAG, "hookAll failed: $e") 
+            }
         }
     }
 }
